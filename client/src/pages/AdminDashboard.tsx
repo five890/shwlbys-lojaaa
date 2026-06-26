@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { LogOut, Package, ShoppingCart, Users, BarChart3, Plus, Edit2, Trash2, Eye, FileText, MapPin, CheckCircle, Clock, X } from "lucide-react";
+import { LogOut, Package, ShoppingCart, Users, BarChart3, Plus, Edit2, Trash2, Eye, FileText, MapPin, CheckCircle, Clock, X, Upload, Image as ImageIcon } from "lucide-react";
 
 interface Order {
   orderId: string;
@@ -21,6 +21,7 @@ interface Product {
   promotionalPrice: number;
   stock: number;
   category: string;
+  image?: string;
 }
 
 export default function AdminDashboard() {
@@ -30,10 +31,10 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: "Produto Premium 1", price: 299.90, promotionalPrice: 199.90, stock: 45, category: "Eletrônicos" },
-    { id: 2, name: "Produto Premium 2", price: 399.90, promotionalPrice: 279.90, stock: 32, category: "Moda" },
-    { id: 3, name: "Produto Premium 3", price: 199.90, promotionalPrice: 149.90, stock: 78, category: "Casa" },
-    { id: 4, name: "Produto Premium 4", price: 499.90, promotionalPrice: 349.90, stock: 12, category: "Esportes" },
+    { id: 1, name: "Produto Premium 1", price: 299.90, promotionalPrice: 199.90, stock: 45, category: "Eletrônicos", image: "https://via.placeholder.com/250x250?text=Produto+1" },
+    { id: 2, name: "Produto Premium 2", price: 399.90, promotionalPrice: 279.90, stock: 32, category: "Moda", image: "https://via.placeholder.com/250x250?text=Produto+2" },
+    { id: 3, name: "Produto Premium 3", price: 199.90, promotionalPrice: 149.90, stock: 78, category: "Casa", image: "https://via.placeholder.com/250x250?text=Produto+3" },
+    { id: 4, name: "Produto Premium 4", price: 499.90, promotionalPrice: 349.90, stock: 12, category: "Esportes", image: "https://via.placeholder.com/250x250?text=Produto+4" },
   ]);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -42,7 +43,9 @@ export default function AdminDashboard() {
     promotionalPrice: "",
     stock: "",
     category: "Eletrônicos",
+    image: "",
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState("");
   const [categories, setCategories] = useState(["Eletrônicos", "Moda", "Casa", "Esportes"]);
 
@@ -77,6 +80,19 @@ export default function AdminDashboard() {
     setLocation("/admin/login");
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setImagePreview(result);
+        setNewProduct({ ...newProduct, image: result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleApproveOrder = (orderId: string) => {
     setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: "Em Processamento" } : o));
     alert("Pedido aprovado! Status atualizado para 'Em Processamento'");
@@ -89,7 +105,7 @@ export default function AdminDashboard() {
 
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.price || !newProduct.promotionalPrice || !newProduct.stock) {
-      alert("Por favor, preencha todos os campos");
+      alert("Por favor, preencha todos os campos obrigatórios");
       return;
     }
 
@@ -100,10 +116,12 @@ export default function AdminDashboard() {
       promotionalPrice: parseFloat(newProduct.promotionalPrice),
       stock: parseInt(newProduct.stock),
       category: newProduct.category,
+      image: newProduct.image || "https://via.placeholder.com/250x250?text=Sem+Imagem",
     };
 
     setProducts([...products, product]);
-    setNewProduct({ name: "", price: "", promotionalPrice: "", stock: "", category: "Eletrônicos" });
+    setNewProduct({ name: "", price: "", promotionalPrice: "", stock: "", category: "Eletrônicos", image: "" });
+    setImagePreview(null);
     setShowAddProductModal(false);
     alert("Produto adicionado com sucesso!");
   };
@@ -432,101 +450,138 @@ export default function AdminDashboard() {
             {/* Add Product Modal */}
             {showAddProductModal && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-card border border-border rounded-lg p-8 max-w-md w-full">
+                <div className="bg-card border border-border rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-foreground">Adicionar Novo Produto</h3>
                     <button
-                      onClick={() => setShowAddProductModal(false)}
+                      onClick={() => {
+                        setShowAddProductModal(false);
+                        setImagePreview(null);
+                      }}
                       className="text-muted-foreground hover:text-foreground"
                     >
                       <X className="w-6 h-6" />
                     </button>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Nome do Produto *</label>
-                      <input
-                        type="text"
-                        value={newProduct.name}
-                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                        placeholder="Ex: Produto Premium"
-                        className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Left Column - Form */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Nome do Produto *</label>
+                        <input
+                          type="text"
+                          value={newProduct.name}
+                          onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                          placeholder="Ex: Produto Premium"
+                          className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Preço Original *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={newProduct.price}
+                          onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                          placeholder="299.90"
+                          className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Preço Promocional *</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={newProduct.promotionalPrice}
+                          onChange={(e) => setNewProduct({ ...newProduct, promotionalPrice: e.target.value })}
+                          placeholder="199.90"
+                          className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Estoque *</label>
+                        <input
+                          type="number"
+                          value={newProduct.stock}
+                          onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                          placeholder="45"
+                          className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Categoria *</label>
+                        <select
+                          value={newProduct.category}
+                          onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                          className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                        >
+                          {categories.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
+                    {/* Right Column - Image Upload */}
                     <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Preço Original *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={newProduct.price}
-                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                        placeholder="299.90"
-                        className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                      />
+                      <label className="block text-sm font-medium text-foreground mb-2">Imagem do Produto</label>
+                      <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-accent transition cursor-pointer relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        {imagePreview ? (
+                          <div className="space-y-3">
+                            <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
+                            <p className="text-xs text-muted-foreground">Clique para alterar</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <Upload className="w-8 h-8 text-muted-foreground mx-auto" />
+                            <div>
+                              <p className="text-sm font-medium text-foreground">Clique para fazer upload</p>
+                              <p className="text-xs text-muted-foreground">PNG, JPG, GIF até 5MB</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Preço Promocional *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={newProduct.promotionalPrice}
-                        onChange={(e) => setNewProduct({ ...newProduct, promotionalPrice: e.target.value })}
-                        placeholder="199.90"
-                        className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Estoque *</label>
-                      <input
-                        type="number"
-                        value={newProduct.stock}
-                        onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                        placeholder="45"
-                        className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Categoria *</label>
-                      <select
-                        value={newProduct.category}
-                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                        className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-                      >
-                        {categories.map((cat) => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                      <Button
-                        onClick={() => setShowAddProductModal(false)}
-                        className="flex-1 bg-muted text-foreground hover:bg-muted/80"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        onClick={handleAddProduct}
-                        className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
-                      >
-                        Adicionar
-                      </Button>
-                    </div>
+                  <div className="flex gap-3 pt-6 mt-6 border-t border-border">
+                    <Button
+                      onClick={() => {
+                        setShowAddProductModal(false);
+                        setImagePreview(null);
+                      }}
+                      className="flex-1 bg-muted text-foreground hover:bg-muted/80"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleAddProduct}
+                      className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
+                    >
+                      Adicionar Produto
+                    </Button>
                   </div>
                 </div>
               </div>
             )}
 
             {/* Products Table */}
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="bg-card border border-border rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Imagem</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Nome</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Preço</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Preço Promo</th>
@@ -538,7 +593,14 @@ export default function AdminDashboard() {
                 <tbody>
                   {products.map((product) => (
                     <tr key={product.id} className="border-b border-border hover:bg-muted/20 transition">
-                      <td className="py-3 px-4 text-foreground">{product.name}</td>
+                      <td className="py-3 px-4">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-12 h-12 object-cover rounded-lg"
+                        />
+                      </td>
+                      <td className="py-3 px-4 text-foreground font-medium">{product.name}</td>
                       <td className="py-3 px-4 text-foreground">R$ {product.price.toFixed(2)}</td>
                       <td className="py-3 px-4 text-accent font-semibold">R$ {product.promotionalPrice.toFixed(2)}</td>
                       <td className="py-3 px-4 text-foreground">{product.stock} un</td>
