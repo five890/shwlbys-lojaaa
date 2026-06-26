@@ -21,7 +21,7 @@ interface Product {
   promotionalPrice: number;
   stock: number;
   category: string;
-  image?: string;
+  images?: string[];
 }
 
 export default function AdminDashboard() {
@@ -31,10 +31,10 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [products, setProducts] = useState<Product[]>([
-    { id: 1, name: "Produto Premium 1", price: 299.90, promotionalPrice: 199.90, stock: 45, category: "Eletrônicos", image: "https://via.placeholder.com/250x250?text=Produto+1" },
-    { id: 2, name: "Produto Premium 2", price: 399.90, promotionalPrice: 279.90, stock: 32, category: "Moda", image: "https://via.placeholder.com/250x250?text=Produto+2" },
-    { id: 3, name: "Produto Premium 3", price: 199.90, promotionalPrice: 149.90, stock: 78, category: "Casa", image: "https://via.placeholder.com/250x250?text=Produto+3" },
-    { id: 4, name: "Produto Premium 4", price: 499.90, promotionalPrice: 349.90, stock: 12, category: "Esportes", image: "https://via.placeholder.com/250x250?text=Produto+4" },
+    { id: 1, name: "Produto Premium 1", price: 299.90, promotionalPrice: 199.90, stock: 45, category: "Eletrônicos", images: ["https://via.placeholder.com/250x250?text=Produto+1"] },
+    { id: 2, name: "Produto Premium 2", price: 399.90, promotionalPrice: 279.90, stock: 32, category: "Moda", images: ["https://via.placeholder.com/250x250?text=Produto+2"] },
+    { id: 3, name: "Produto Premium 3", price: 199.90, promotionalPrice: 149.90, stock: 78, category: "Casa", images: ["https://via.placeholder.com/250x250?text=Produto+3"] },
+    { id: 4, name: "Produto Premium 4", price: 499.90, promotionalPrice: 349.90, stock: 12, category: "Esportes", images: ["https://via.placeholder.com/250x250?text=Produto+4"] },
   ]);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -43,9 +43,9 @@ export default function AdminDashboard() {
     promotionalPrice: "",
     stock: "",
     category: "Eletrônicos",
-    image: "",
+    images: [] as string[],
   });
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("");
   const [categories, setCategories] = useState(["Eletrônicos", "Moda", "Casa", "Esportes"]);
 
@@ -80,32 +80,55 @@ export default function AdminDashboard() {
     setLocation("/admin/login");
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && imagePreviews.length < 5) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
-        setImagePreview(result);
-        setNewProduct({ ...newProduct, image: result });
+        const newPreviews = [...imagePreviews];
+        newPreviews[index] = result;
+        setImagePreviews(newPreviews);
+        
+        const newImages = [...newProduct.images];
+        newImages[index] = result;
+        setNewProduct({ ...newProduct, images: newImages });
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const handleRemoveImage = (index: number) => {
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    setImagePreviews(newPreviews);
+    
+    const newImages = newProduct.images.filter((_, i) => i !== index);
+    setNewProduct({ ...newProduct, images: newImages });
+  };
+
   const handleApproveOrder = (orderId: string) => {
-    setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: "Em Processamento" } : o));
-    alert("Pedido aprovado! Status atualizado para 'Em Processamento'");
+    setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: "Sendo Preparado" } : o));
+    alert("Pedido aprovado! Status atualizado para 'Sendo Preparado'");
   };
 
   const handleRejectOrder = (orderId: string) => {
-    setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: "Cancelado" } : o));
-    alert("Pedido rejeitado!");
+    setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: "Recusado" } : o));
+    alert("Pedido recusado!");
+  };
+
+  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
+    setOrders(orders.map(o => o.orderId === orderId ? { ...o, status: newStatus } : o));
+    alert(`Status atualizado para '${newStatus}'`);
   };
 
   const handleAddProduct = () => {
     if (!newProduct.name || !newProduct.price || !newProduct.promotionalPrice || !newProduct.stock) {
       alert("Por favor, preencha todos os campos obrigatórios");
+      return;
+    }
+
+    if (newProduct.images.length === 0) {
+      alert("Por favor, adicione pelo menos uma imagem");
       return;
     }
 
@@ -116,12 +139,12 @@ export default function AdminDashboard() {
       promotionalPrice: parseFloat(newProduct.promotionalPrice),
       stock: parseInt(newProduct.stock),
       category: newProduct.category,
-      image: newProduct.image || "https://via.placeholder.com/250x250?text=Sem+Imagem",
+      images: newProduct.images.length > 0 ? newProduct.images : ["https://via.placeholder.com/250x250?text=Sem+Imagem"],
     };
 
     setProducts([...products, product]);
-    setNewProduct({ name: "", price: "", promotionalPrice: "", stock: "", category: "Eletrônicos", image: "" });
-    setImagePreview(null);
+    setNewProduct({ name: "", price: "", promotionalPrice: "", stock: "", category: "Eletrônicos", images: [] });
+    setImagePreviews([]);
     setShowAddProductModal(false);
     alert("Produto adicionado com sucesso!");
   };
@@ -150,9 +173,7 @@ export default function AdminDashboard() {
 
   // Mock data
   const stats = [
-    { label: "Total de Vendas", value: "R$ 12.450,00", icon: ShoppingCart, color: "bg-blue-500" },
     { label: "Produtos", value: products.length.toString(), icon: Package, color: "bg-green-500" },
-    { label: "Clientes", value: "156", icon: Users, color: "bg-purple-500" },
     { label: "Pedidos Hoje", value: orders.length.toString(), icon: BarChart3, color: "bg-orange-500" },
   ];
 
@@ -204,7 +225,7 @@ export default function AdminDashboard() {
         {activeTab === "dashboard" && (
           <div>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
               {stats.map((stat, i) => {
                 const Icon = stat.icon;
                 return (
@@ -340,12 +361,17 @@ export default function AdminDashboard() {
                     {/* Status Update */}
                     <div className="p-4 bg-muted/20 rounded-lg">
                       <h3 className="font-semibold text-foreground mb-3">Atualizar Status</h3>
-                      <select className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent">
-                        <option>Aguardando Validação</option>
-                        <option>Em Processamento</option>
-                        <option>Enviado</option>
-                        <option>Entregue</option>
-                        <option>Cancelado</option>
+                      <select 
+                        value={selectedOrder.status}
+                        onChange={(e) => handleUpdateOrderStatus(selectedOrder.orderId, e.target.value)}
+                        className="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                      >
+                        <option value="Aguardando Validação">Aguardando Validação</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Sendo Preparado">Sendo Preparado</option>
+                        <option value="Enviado">Enviado</option>
+                        <option value="Entregue">Entregue</option>
+                        <option value="Recusado">Recusado</option>
                       </select>
                     </div>
                   </div>
@@ -381,7 +407,7 @@ export default function AdminDashboard() {
                     <tr className="border-b border-border bg-muted/20">
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Pedido</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Cliente</th>
-                      <th className="text-left py-3 px-4 text-muted-foreground font-medium">Email</th>
+                      <th className="text-left py-3 px-4 text-muted-foreground font-medium">Endereço Entrega</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Valor</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Status</th>
                       <th className="text-left py-3 px-4 text-muted-foreground font-medium">Comprovante</th>
@@ -392,8 +418,8 @@ export default function AdminDashboard() {
                     {orders.map((order) => (
                       <tr key={order.orderId} className="border-b border-border hover:bg-muted/20 transition">
                         <td className="py-3 px-4 text-foreground font-medium">{order.orderId}</td>
-                        <td className="py-3 px-4 text-foreground">{order.customer}</td>
-                        <td className="py-3 px-4 text-muted-foreground text-xs">{order.email}</td>
+                        <td className="py-3 px-4 text-foreground text-sm">{order.customer}</td>
+                        <td className="py-3 px-4 text-muted-foreground text-xs">{order.address}</td>
                         <td className="py-3 px-4 text-foreground font-semibold">R$ {order.amount.toFixed(2)}</td>
                         <td className="py-3 px-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -450,13 +476,13 @@ export default function AdminDashboard() {
             {/* Add Product Modal */}
             {showAddProductModal && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-card border border-border rounded-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="bg-card border border-border rounded-lg p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-foreground">Adicionar Novo Produto</h3>
                     <button
                       onClick={() => {
                         setShowAddProductModal(false);
-                        setImagePreview(null);
+                        setImagePreviews([]);
                       }}
                       className="text-muted-foreground hover:text-foreground"
                     >
@@ -464,7 +490,7 @@ export default function AdminDashboard() {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Left Column - Form */}
                     <div className="space-y-4">
                       <div>
@@ -527,31 +553,60 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Right Column - Image Upload */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">Imagem do Produto</label>
-                      <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-accent transition cursor-pointer relative">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                        {imagePreview ? (
-                          <div className="space-y-3">
-                            <img src={imagePreview} alt="Preview" className="w-full h-48 object-cover rounded-lg" />
-                            <p className="text-xs text-muted-foreground">Clique para alterar</p>
+                    {/* Right Column - Image Upload (5 slots) */}
+                    <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Imagens do Produto ({imagePreviews.length}/5)
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {[0, 1, 2, 3, 4].map((index) => (
+                          <div key={index} className="relative">
+                            {imagePreviews[index] ? (
+                              <div className="relative group">
+                                <img
+                                  src={imagePreviews[index]}
+                                  alt={`Preview ${index + 1}`}
+                                  className="w-full h-32 object-cover rounded-lg border border-border"
+                                />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center gap-2">
+                                  <label className="cursor-pointer p-2 bg-accent rounded hover:bg-accent/90 transition">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => handleImageUpload(e, index)}
+                                      className="hidden"
+                                    />
+                                    <Upload className="w-4 h-4 text-white" />
+                                  </label>
+                                  <button
+                                    onClick={() => handleRemoveImage(index)}
+                                    className="p-2 bg-destructive rounded hover:bg-destructive/90 transition"
+                                  >
+                                    <X className="w-4 h-4 text-white" />
+                                  </button>
+                                </div>
+                                <span className="absolute top-1 right-1 bg-accent text-white text-xs px-2 py-1 rounded">
+                                  {index + 1}
+                                </span>
+                              </div>
+                            ) : (
+                              <label className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-accent transition cursor-pointer h-32 flex flex-col items-center justify-center">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleImageUpload(e, index)}
+                                  className="hidden"
+                                />
+                                <Upload className="w-6 h-6 text-muted-foreground mb-2" />
+                                <span className="text-xs text-muted-foreground">Imagem {index + 1}</span>
+                              </label>
+                            )}
                           </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <Upload className="w-8 h-8 text-muted-foreground mx-auto" />
-                            <div>
-                              <p className="text-sm font-medium text-foreground">Clique para fazer upload</p>
-                              <p className="text-xs text-muted-foreground">PNG, JPG, GIF até 5MB</p>
-                            </div>
-                          </div>
-                        )}
+                        ))}
                       </div>
+                      <p className="text-xs text-muted-foreground mt-3">
+                        Você pode adicionar até 5 imagens. Clique ou arraste para fazer upload.
+                      </p>
                     </div>
                   </div>
 
@@ -559,7 +614,7 @@ export default function AdminDashboard() {
                     <Button
                       onClick={() => {
                         setShowAddProductModal(false);
-                        setImagePreview(null);
+                        setImagePreviews([]);
                       }}
                       className="flex-1 bg-muted text-foreground hover:bg-muted/80"
                     >
@@ -581,7 +636,7 @@ export default function AdminDashboard() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/20">
-                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Imagem</th>
+                    <th className="text-left py-3 px-4 text-muted-foreground font-medium">Imagens</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Nome</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Preço</th>
                     <th className="text-left py-3 px-4 text-muted-foreground font-medium">Preço Promo</th>
@@ -594,11 +649,22 @@ export default function AdminDashboard() {
                   {products.map((product) => (
                     <tr key={product.id} className="border-b border-border hover:bg-muted/20 transition">
                       <td className="py-3 px-4">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-12 h-12 object-cover rounded-lg"
-                        />
+                        <div className="flex gap-1">
+                          {product.images && product.images.slice(0, 3).map((img, i) => (
+                            <img
+                              key={i}
+                              src={img}
+                              alt={`${product.name} ${i + 1}`}
+                              className="w-10 h-10 object-cover rounded-lg border border-border"
+                              title={`Imagem ${i + 1}`}
+                            />
+                          ))}
+                          {product.images && product.images.length > 3 && (
+                            <div className="w-10 h-10 rounded-lg border border-border bg-muted/20 flex items-center justify-center text-xs font-bold text-muted-foreground">
+                              +{product.images.length - 3}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-foreground font-medium">{product.name}</td>
                       <td className="py-3 px-4 text-foreground">R$ {product.price.toFixed(2)}</td>
