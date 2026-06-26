@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, addresses, orders, products, reviews, wishlists, chatMessages } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,105 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createAddress(userId: number, data: any) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot create address: database not available");
+    return undefined;
+  }
+
+  const result = await db.insert(addresses).values({
+    userId,
+    ...data,
+  });
+
+  return result;
+}
+
+export async function getUserAddresses(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get addresses: database not available");
+    return [];
+  }
+
+  const result = await db.select().from(addresses).where(eq(addresses.userId, userId));
+
+  return result;
+}
+
+export async function getUserOrders(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get orders: database not available");
+    return [];
+  }
+
+  const result = await db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
+
+  return result;
+}
+
+export async function getOrderById(orderId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get order: database not available");
+    return undefined;
+  }
+
+  const result = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserWishlists(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get wishlists: database not available");
+    return [];
+  }
+
+  const result = await db.select().from(wishlists).where(eq(wishlists.userId, userId));
+
+  return result;
+}
+
+export async function getProductReviews(productId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get reviews: database not available");
+    return [];
+  }
+
+  const result = await db.select().from(reviews).where(eq(reviews.productId, productId)).orderBy(desc(reviews.createdAt));
+
+  return result;
+}
+
+export async function getChatMessages(userId: number) {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get chat messages: database not available");
+    return [];
+  }
+
+  const result = await db.select().from(chatMessages).where(eq(chatMessages.userId, userId)).orderBy(desc(chatMessages.createdAt));
+
+  return result;
 }
 
 // TODO: add feature queries here as your schema grows.
